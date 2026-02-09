@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block pageDescription %}
+This is a user account page created by Team PASS: an undergraduate Gemstone research team from UMD studying
+cybersecurity.
+{% endblock %}
+{% block title %}User Account{% endblock %}
+
+{% block cardTitle %}
+<div class="d-flex flex-row justify-content-between">
+  <span>{{current_user.display_name}}'s Account</span>
+  
+  <form action="{{ url_for('logout') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button type="submit" class="btn btn-primary btn-block">Log Out</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block cardBody %}
+<p>Earn credit for each day you complete all daily login tasks following your complete registration day!</p>
+
+<p>
+  <strong>Total Credit Earned by Logging in: </strong>
+  <span>${{ "%0.2f" % get_credit(current_user.login_bitfield) }}</span>
+</p>
+
+<p><strong>Remaining Daily Tasks:</strong></p>
+{% if not current_user.has_password() %}
+<ul>
+  <li>Register your account with a password.</li>
+</ul>
+{% elif not current_user.credential_id %}
+<ul>
+  <li>Register your account with WebAuthn.</li>
+</ul>
+{% elif current_user.last_complete_login != date.today() %}
+<ul>
+  {% if 'logged_in_today' in session and session['logged_in_today'] != 'password' %}
+    <li>Log in with a password.</li>
+  {% endif %}
+  {% if 'logged_in_today' in session and session['logged_in_today'] != 'fido2' %}
+    <li>Log in with WebAuthn.</li>
+  {% endif %}
+</ul>
+{% else %}
+<span>✅ Completed all daily tasks. Check back in tomorrow!</span>
+{% endif %}
+
+<footer>
+  {% if current_user.password_hash %}
+    <a id="add-password" class="btn btn-outline-primary btn-block profile-action disabled" href="/add-password">Password Already Registered</a>
+  {% else %}
+    <a id="add-password" class="btn btn-outline-primary btn-block profile-action" href="/add-password">Add Password</a>
+  {% endif %}
+
+  {% if current_user.credential_id %}
+    <a id="add-biometric" class="btn btn-outline-primary btn-block profile-action disabled">Biometric Already Registered</a>
+  {% else %}
+    <form id="add-biometric" action="/webauthn/registration/start" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <button type="submit" class="btn btn-outline-primary btn-block profile-action">Add Biometric</button>
+    </form>
+  {% endif %}
+    
+  <form action="{{ url_for('delete_account') }}" method="POST"
+    onsubmit="return confirm('Do you really want to delete your account?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button type="submit" class="btn btn-outline-danger btn-block profile-action">Delete Account</button>
+  </form>
+</footer>
+
+{% endblock %}
+
+{% block customJS %}
+<script src="{{ url_for('static', filename='scripts/lib/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/register.js') }}"></script>
+{% endblock %}
